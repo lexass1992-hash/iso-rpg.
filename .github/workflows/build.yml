@@ -24,6 +24,26 @@ jobs:
           mv debug.keystore /root/debug.keystore
           cp ci_editor_settings.txt ~/.config/godot/editor_settings-4.3.tres
           cp ci_editor_settings.txt ~/.config/godot/editor_settings-4.tres
+          JH=$(dirname "$(dirname "$(readlink -f "$(command -v javac || command -v java)")")")
+          echo "Java home: $JH"
+          echo "export/android/java_sdk_path = \"$JH\"" >> ~/.config/godot/editor_settings-4.3.tres
+          echo "export/android/java_sdk_path = \"$JH\"" >> ~/.config/godot/editor_settings-4.tres
+
+      - name: Install Android build tools 34
+        run: |
+          SDK=/usr/lib/android-sdk
+          SM=$(command -v sdkmanager || true)
+          [ -z "$SM" ] && [ -x $SDK/cmdline-tools/latest/bin/sdkmanager ] && SM=$SDK/cmdline-tools/latest/bin/sdkmanager
+          if [ -z "$SM" ]; then
+            curl -sSL -o /tmp/cmdtools.zip https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip
+            mkdir -p /tmp/cmdtools
+            unzip -q /tmp/cmdtools.zip -d /tmp/cmdtools
+            SM=/tmp/cmdtools/cmdline-tools/bin/sdkmanager
+          fi
+          echo "sdkmanager: $SM"
+          yes | $SM --sdk_root=$SDK --licenses > /dev/null || true
+          $SM --sdk_root=$SDK "build-tools;34.0.0" "platforms;android-34"
+          ls $SDK/build-tools
 
       - name: Import project
         run: godot --headless --verbose --import || true

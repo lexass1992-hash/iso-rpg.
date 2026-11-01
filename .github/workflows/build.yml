@@ -1,0 +1,40 @@
+name: Build Android APK
+
+on:
+  push:
+    branches: [main, master]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container:
+      image: barichello/godot-ci:4.3
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Prepare Godot templates, keystore and editor settings
+        run: |
+          V="${GODOT_VERSION:-4.3}"
+          mkdir -v -p ~/.local/share/godot/export_templates ~/.config/godot
+          if [ -d "/root/.local/share/godot/export_templates/${V}.stable" ] && [ ! -d ~/.local/share/godot/export_templates/${V}.stable ]; then
+            mv /root/.local/share/godot/export_templates/${V}.stable ~/.local/share/godot/export_templates/${V}.stable
+          fi
+          keytool -keyalg RSA -genkeypair -alias androiddebugkey -keypass android -keystore debug.keystore -storepass android -dname "CN=Android Debug,O=Android,C=US" -validity 9999 -deststoretype pkcs12
+          mv debug.keystore /root/debug.keystore
+          cp ci_editor_settings.txt ~/.config/godot/editor_settings-4.3.tres
+          cp ci_editor_settings.txt ~/.config/godot/editor_settings-4.tres
+
+      - name: Import project
+        run: godot --headless --verbose --import || true
+
+      - name: Export APK
+        run: |
+          mkdir -p build/android
+          godot --headless --verbose --export-debug "Android" build/android/iso_rpg.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: iso-rpg-apk
+          path: build/android/iso_rpg.apk
+          if-no-files-found: error
